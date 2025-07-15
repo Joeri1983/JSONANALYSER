@@ -4,7 +4,7 @@ const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>JSON Key Explorer</title>
+  <title>Boomi connections and processes</title>
 </head>
 <body>
   <h1>Paste the JSON data into the textbox below</h1>
@@ -16,7 +16,7 @@ const html = `
     <option value="">-- No connections found --</option>
   </select>
 
-  <h3>Related Process Names:</h3>
+  <h3>Related Processes:</h3>
   <div id="processNames"></div>
 
   <pre id="output"></pre>
