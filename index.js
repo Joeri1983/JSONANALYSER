@@ -5,37 +5,6 @@ const html = `
 <html>
 <head>
   <title>JSON Key Explorer</title>
-  <style>
-    #dropdownList {
-      border: 1px solid #ccc;
-      max-height: 150px;
-      overflow-y: auto;
-      position: absolute;
-      background: white;
-      width: 300px;
-      display: none;
-      margin-top: 0;
-      padding-left: 0;
-      list-style: none;
-      z-index: 1000;
-    }
-    #dropdownList li {
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    #dropdownList li:hover {
-      background-color: #eee;
-    }
-    #connectionInput {
-      width: 300px;
-      padding: 5px;
-      box-sizing: border-box;
-    }
-    .container {
-      position: relative;
-      width: 300px;
-    }
-  </style>
 </head>
 <body>
   <h1>JSON Key Explorer</h1>
@@ -43,10 +12,9 @@ const html = `
   <button onclick="compute()">Show connectors</button>
 
   <h3>Connection Names:</h3>
-  <div class="container">
-    <input type="text" id="connectionInput" placeholder="Type to search connection names" autocomplete="off" />
-    <ul id="dropdownList"></ul>
-  </div>
+  <select id="connectionSelect" onchange="showProcesses()">
+    <option value="">-- No connections found --</option>
+  </select>
 
   <h3>Related Process Names:</h3>
   <div id="processNames"></div>
@@ -54,20 +22,18 @@ const html = `
   <pre id="output"></pre>
 
   <script>
-    let currentData = null;
-    let connectionNames = []; // unique connection names
+    let currentData = null; // Store parsed JSON
+    let connectionNames = [];
 
     function compute() {
       const input = document.getElementById('jsonInput').value;
       const output = document.getElementById('output');
+      const select = document.getElementById('connectionSelect');
       const processDiv = document.getElementById('processNames');
-      const dropdownList = document.getElementById('dropdownList');
-      const connectionInput = document.getElementById('connectionInput');
 
       output.textContent = '';
       processDiv.textContent = '';
-      dropdownList.style.display = 'none';
-      connectionInput.value = '';
+      select.innerHTML = '<option value="">-- No connections found --</option>';
       currentData = null;
       connectionNames = [];
 
@@ -103,68 +69,29 @@ const html = `
         });
 
         connectionNames = Array.from(namesSet).sort((a,b) => a.localeCompare(b));
+
         if(connectionNames.length === 0) {
           output.textContent = 'No connection names found.';
+          return;
         }
+
+        select.innerHTML = connectionNames
+          .map(name => \`<option value="\${name}">\${name}</option>\`)
+          .join('');
+
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
       }
     }
 
-    const connectionInput = document.getElementById('connectionInput');
-    const dropdownList = document.getElementById('dropdownList');
-    const processDiv = document.getElementById('processNames');
-
-    // Show filtered dropdown when typing
-    connectionInput.addEventListener('input', () => {
-      const val = connectionInput.value.trim().toLowerCase();
-      processDiv.textContent = '';
-      if (!val) {
-        dropdownList.style.display = 'none';
-        return;
-      }
-      const filtered = connectionNames.filter(name => name.toLowerCase().includes(val));
-      if (filtered.length === 0) {
-        dropdownList.style.display = 'none';
-        return;
-      }
-      dropdownList.innerHTML = filtered.map(name => '<li>' + name + '</li>').join('');
-      dropdownList.style.display = 'block';
-    });
-
-    // Click on dropdown item to select it
-    dropdownList.addEventListener('click', e => {
-      if (e.target.tagName.toLowerCase() === 'li') {
-        connectionInput.value = e.target.textContent;
-        dropdownList.style.display = 'none';
-        showProcesses();
-      }
-    });
-
-    // Hide dropdown if click outside
-    document.addEventListener('click', e => {
-      if (!connectionInput.contains(e.target) && !dropdownList.contains(e.target)) {
-        dropdownList.style.display = 'none';
-      }
-    });
-
-    // Show processes when input loses focus but only if exact match
-    connectionInput.addEventListener('blur', () => {
-      setTimeout(() => {
-        if (connectionNames.includes(connectionInput.value.trim())) {
-          showProcesses();
-        } else {
-          processDiv.textContent = '';
-        }
-        dropdownList.style.display = 'none';
-      }, 150);
-    });
-
     function showProcesses() {
+      const select = document.getElementById('connectionSelect');
+      const processDiv = document.getElementById('processNames');
       processDiv.textContent = '';
+
       if (!currentData) return;
 
-      const selectedName = connectionInput.value.trim();
+      const selectedName = select.value.trim();
       if (!selectedName) return;
 
       if (!currentData.ScheduledProcesses || !Array.isArray(currentData.ScheduledProcesses)) return;
