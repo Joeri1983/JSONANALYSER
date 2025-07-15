@@ -7,8 +7,8 @@ const html = `
   <title>Boomi connections and processes</title>
 </head>
 <body>
-  <h1>Paste the JSON data into the textbox below</h1>
-  <textarea id="jsonInput" rows="40" cols="400" placeholder='Enter JSON object or array of objects'></textarea><br>
+  <h1>Insert the JSON data into the textbox</h1>
+  <textarea id="jsonInput" rows="40" cols="200" placeholder='Enter JSON object or array of objects'></textarea><br>
   <button onclick="compute()">Show connectors</button>
 
   <h3>Connection Names:</h3>
