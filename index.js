@@ -5,19 +5,29 @@ const html = `
 <html>
 <head>
   <title>Boomi - Connection/Process relations</title>
+  <style>
+    /* Hide the sections initially */
+    #connectionSection, #processSection {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <h1>Insert JSON data</h1>
   <textarea id="jsonInput" rows="20" cols="200" placeholder='Enter JSON object or array of objects'></textarea><br>
   <button onclick="compute()">Show connectors</button>
 
-  <h3>Connection Names:</h3>
-  <select id="connectionSelect" onchange="showProcesses()">
-    <option value="">-- No connections found --</option>
-  </select>
+  <div id="connectionSection">
+    <h3>Connection Names:</h3>
+    <select id="connectionSelect" onchange="showProcesses()">
+      <option value="">-- No connections found --</option>
+    </select>
+  </div>
 
-  <h3>Related Process Names:</h3>
-  <div id="processNames"></div>
+  <div id="processSection">
+    <h3>Related Process Names:</h3>
+    <div id="processNames"></div>
+  </div>
 
   <pre id="output"></pre>
 
@@ -30,12 +40,18 @@ const html = `
       const output = document.getElementById('output');
       const select = document.getElementById('connectionSelect');
       const processDiv = document.getElementById('processNames');
+      const connectionSection = document.getElementById('connectionSection');
+      const processSection = document.getElementById('processSection');
 
       output.textContent = '';
       processDiv.textContent = '';
       select.innerHTML = '<option value="">-- No connections found --</option>';
       currentData = null;
       connectionNames = [];
+
+      // Hide sections initially until valid data is found
+      connectionSection.style.display = 'none';
+      processSection.style.display = 'none';
 
       try {
         const data = JSON.parse(input);
@@ -79,6 +95,9 @@ const html = `
           .map(name => \`<option value="\${name}">\${name}</option>\`)
           .join('');
 
+        // Show the connection dropdown section now that data is loaded
+        connectionSection.style.display = 'block';
+        processSection.style.display = 'none'; // keep process section hidden until selection
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
       }
@@ -87,12 +106,16 @@ const html = `
     function showProcesses() {
       const select = document.getElementById('connectionSelect');
       const processDiv = document.getElementById('processNames');
+      const processSection = document.getElementById('processSection');
       processDiv.textContent = '';
 
       if (!currentData) return;
 
       const selectedName = select.value.trim();
-      if (!selectedName) return;
+      if (!selectedName) {
+        processSection.style.display = 'none';
+        return;
+      }
 
       if (!currentData.ScheduledProcesses || !Array.isArray(currentData.ScheduledProcesses)) return;
 
@@ -115,11 +138,14 @@ const html = `
 
       if (matchingProcesses.length === 0) {
         processDiv.textContent = 'No ProcessName found for selected connector.';
+        processSection.style.display = 'block';
         return;
       }
 
       const uniqueProcesses = [...new Set(matchingProcesses)];
-      processDiv.innerHTML = '<ul>' + uniqueProcesses.map(p => '<li>' + p + '</li>').join('') + '</ul>';
+      // Use <ol> for numbered list instead of <ul>
+      processDiv.innerHTML = '<ol>' + uniqueProcesses.map(p => '<li>' + p + '</li>').join('') + '</ol>';
+      processSection.style.display = 'block';
     }
   </script>
 </body>
