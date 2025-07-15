@@ -9,7 +9,7 @@ const html = `
 <body>
   <h1>JSON Key Explorer</h1>
   <textarea id="jsonInput" rows="14" cols="70" placeholder='Enter JSON object or array of objects'></textarea><br>
-  <button onclick="compute()">Compute</button>
+  <button onclick="compute()">Show connectors</button>
 
   <h3>Connection Names:</h3>
   <select id="connectionSelect">
@@ -24,6 +24,7 @@ const html = `
       const output = document.getElementById('output');
       const select = document.getElementById('connectionSelect');
       select.innerHTML = '<option value="">-- No connections found --</option>'; // Reset
+      output.textContent = ''; // Clear output
 
       try {
         const data = JSON.parse(input);
@@ -36,27 +37,6 @@ const html = `
         } else {
           output.textContent = 'Please enter a valid JSON object or array of objects.';
           return;
-        }
-
-        function getAllKeys(obj, prefix = '') {
-          let keys = [];
-
-          if (Array.isArray(obj)) {
-            obj.forEach((item, index) => {
-              const arrayPrefix = \`\${prefix}[\${index}]\`;
-              keys = keys.concat(getAllKeys(item, arrayPrefix));
-            });
-          } else if (typeof obj === 'object' && obj !== null) {
-            for (const key in obj) {
-              if (!obj.hasOwnProperty(key)) continue;
-              const newPrefix = prefix ? \`\${prefix}.\${key}\` : key;
-              keys = keys.concat(getAllKeys(obj[key], newPrefix));
-            }
-          } else {
-            keys.push(prefix);
-          }
-
-          return keys;
         }
 
         function extractConnectionNames(obj) {
@@ -77,11 +57,6 @@ const html = `
           return names;
         }
 
-        const result = objects.map((obj, index) => {
-          const keys = getAllKeys(obj);
-          return \`Object \${index + 1} keys:\\n- \${keys.join('\\n- ')}\`;
-        }).join('\\n\\n');
-
         // Normalize for uniqueness (case-insensitive), keep original casing for display
         const rawNames = extractConnectionNames(objects[0]);
         const uniqueMap = new Map();
@@ -94,8 +69,6 @@ const html = `
         if (uniqueSortedNames.length > 0) {
           select.innerHTML = uniqueSortedNames.map(name => \`<option value="\${name}">\${name}</option>\`).join('');
         }
-
-        output.textContent = result;
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
       }
