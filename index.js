@@ -4,11 +4,11 @@ const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>JSON Key Explorer</title>
+  <title>Boomi - Connection/Process relations</title>
 </head>
 <body>
-  <h1>JSON Key Explorer</h1>
-  <textarea id="jsonInput" rows="14" cols="70" placeholder='Enter JSON object or array of objects'></textarea><br>
+  <h1>Insert JSON data</h1>
+  <textarea id="jsonInput" rows="20" cols="200" placeholder='Enter JSON object or array of objects'></textarea><br>
   <button onclick="compute()">Show connectors</button>
 
   <h3>Connection Names:</h3>
