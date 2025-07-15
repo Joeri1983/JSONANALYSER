@@ -12,19 +12,27 @@ const html = `
   <button onclick="compute()">Show connectors</button>
 
   <h3>Connection Names:</h3>
-  <select id="connectionSelect">
+  <select id="connectionSelect" onchange="showProcesses()">
     <option value="">-- No connections found --</option>
   </select>
+
+  <h3>Related Process Names:</h3>
+  <div id="processNames"></div>
 
   <pre id="output"></pre>
 
   <script>
+    let currentData = null; // Store parsed JSON for later use
+
     function compute() {
       const input = document.getElementById('jsonInput').value;
       const output = document.getElementById('output');
       const select = document.getElementById('connectionSelect');
+      const processDiv = document.getElementById('processNames');
       select.innerHTML = '<option value="">-- No connections found --</option>'; // Reset
       output.textContent = ''; // Clear output
+      processDiv.textContent = ''; // Clear process names
+      currentData = null;
 
       try {
         const data = JSON.parse(input);
@@ -38,6 +46,8 @@ const html = `
           output.textContent = 'Please enter a valid JSON object or array of objects.';
           return;
         }
+
+        currentData = objects[0]; // Store first object for selection lookup
 
         function extractConnectionEntries(obj) {
           const entries = [];
@@ -84,6 +94,50 @@ const html = `
         }
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
+      }
+    }
+
+    function showProcesses() {
+      const select = document.getElementById('connectionSelect');
+      const processDiv = document.getElementById('processNames');
+      processDiv.textContent = '';
+
+      if (!currentData) return;
+      const val = select.value.trim();
+      if (!val) return;
+
+      const [selectedConnectionName, ...rest] = val.split(' ');
+      const selectedConnectorType = rest.join(' ');
+
+      if (!currentData.ScheduledProcesses || !Array.isArray(currentData.ScheduledProcesses)) return;
+
+      // Find all ProcessNames where this connector exists
+      const matchingProcessNames = [];
+
+      currentData.ScheduledProcesses.forEach(proc => {
+        if (proc.Connectors && Array.isArray(proc.Connectors)) {
+          const found = proc.Connectors.some(conn => {
+            return (
+              conn.connectionName &&
+              conn.connectorType &&
+              conn.connectionName.trim().toLowerCase() === selectedConnectionName.toLowerCase() &&
+              conn.connectorType.trim().toLowerCase() === selectedConnectorType.toLowerCase()
+            );
+          });
+          if (found) {
+            if (proc.ProcessName && typeof proc.ProcessName === 'string') {
+              matchingProcessNames.push(proc.ProcessName);
+            }
+          }
+        }
+      });
+
+      if (matchingProcessNames.length > 0) {
+        // List unique ProcessNames
+        const uniqueProcessNames = Array.from(new Set(matchingProcessNames));
+        processDiv.innerHTML = '<ul>' + uniqueProcessNames.map(name => '<li>' + name + '</li>').join('') + '</ul>';
+      } else {
+        processDiv.textContent = 'No ProcessName found for selected connector.';
       }
     }
   </script>
