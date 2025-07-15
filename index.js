@@ -111,7 +111,6 @@ const html = `
 
       if (!currentData.ScheduledProcesses || !Array.isArray(currentData.ScheduledProcesses)) return;
 
-      // Find all ProcessNames where this connector exists
       const matchingProcessNames = [];
 
       currentData.ScheduledProcesses.forEach(proc => {
@@ -125,15 +124,16 @@ const html = `
             );
           });
           if (found) {
-            if (proc.ProcessName && typeof proc.ProcessName === 'string') {
-              matchingProcessNames.push(proc.ProcessName);
+            let processName = "Unnamed Process";
+            if (proc.ProcessName && typeof proc.ProcessName === 'string' && proc.ProcessName.trim().length > 0) {
+              processName = proc.ProcessName.trim();
             }
+            matchingProcessNames.push(processName);
           }
         }
       });
 
       if (matchingProcessNames.length > 0) {
-        // List unique ProcessNames
         const uniqueProcessNames = Array.from(new Set(matchingProcessNames));
         processDiv.innerHTML = '<ul>' + uniqueProcessNames.map(name => '<li>' + name + '</li>').join('') + '</ul>';
       } else {
