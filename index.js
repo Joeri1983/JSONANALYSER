@@ -22,76 +22,58 @@ const html = `
   <pre id="output"></pre>
 
   <script>
-    let currentData = null; // Store parsed JSON for later use
+    let currentData = null; // Store parsed JSON
 
     function compute() {
       const input = document.getElementById('jsonInput').value;
       const output = document.getElementById('output');
       const select = document.getElementById('connectionSelect');
       const processDiv = document.getElementById('processNames');
-      select.innerHTML = '<option value="">-- No connections found --</option>'; // Reset
-      output.textContent = ''; // Clear output
-      processDiv.textContent = ''; // Clear process names
+      select.innerHTML = '<option value="">-- No connections found --</option>';
+      output.textContent = '';
+      processDiv.textContent = '';
       currentData = null;
 
       try {
         const data = JSON.parse(input);
-        let objects = [];
-
+        let obj = null;
         if (Array.isArray(data)) {
-          objects = data;
+          obj = data[0];
         } else if (typeof data === 'object' && data !== null) {
-          objects = [data];
+          obj = data;
         } else {
           output.textContent = 'Please enter a valid JSON object or array of objects.';
           return;
         }
+        currentData = obj;
 
-        currentData = objects[0]; // Store first object for selection lookup
-
-        function extractConnectionEntries(obj) {
-          const entries = [];
-
-          if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) return entries;
-
-          obj.ScheduledProcesses.forEach(proc => {
-            if (proc.Connectors && Array.isArray(proc.Connectors)) {
-              proc.Connectors.forEach(conn => {
-                if (
-                  conn.connectionName && typeof conn.connectionName === 'string' &&
-                  conn.connectorType && typeof conn.connectorType === 'string'
-                ) {
-                  const connectionName = conn.connectionName.trim();
-                  const connectorType = conn.connectorType.trim();
-                  entries.push({ connectionName, connectorType });
-                }
-              });
-            }
-          });
-
-          return entries;
+        if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) {
+          output.textContent = 'JSON missing ScheduledProcesses array.';
+          return;
         }
 
-        // Get entries (connectionName + connectorType)
-        const rawEntries = extractConnectionEntries(objects[0]);
-
-        // Create unique keys (case insensitive) for uniqueness
-        const uniqueMap = new Map();
-        rawEntries.forEach(({ connectionName, connectorType }) => {
-          const key = (connectionName + ' ' + connectorType).toLowerCase();
-          if (!uniqueMap.has(key)) uniqueMap.set(key, { connectionName, connectorType });
+        // Collect unique connectors
+        const connectorsSet = new Set();
+        obj.ScheduledProcesses.forEach(proc => {
+          if (proc.Connectors && Array.isArray(proc.Connectors)) {
+            proc.Connectors.forEach(conn => {
+              if (conn.connectionName && conn.connectorType) {
+                const val = conn.connectionName.trim() + ' ' + conn.connectorType.trim();
+                connectorsSet.add(val);
+              }
+            });
+          }
         });
 
-        // Sort alphabetically by combined string (case insensitive)
-        const uniqueSortedEntries = Array.from(uniqueMap.values())
-          .sort((a, b) => (a.connectionName + ' ' + a.connectorType).localeCompare(b.connectionName + ' ' + b.connectorType));
+        const connectors = Array.from(connectorsSet).sort((a,b) => a.localeCompare(b));
 
-        if (uniqueSortedEntries.length > 0) {
-          select.innerHTML = uniqueSortedEntries
-            .map(({ connectionName, connectorType }) =>
-              \`<option value="\${connectionName} \${connectorType}">\${connectionName} \${connectorType}</option>\`
-            ).join('');
+        if (connectors.length === 0) {
+          select.innerHTML = '<option value="">-- No connections found --</option>';
+          return;
         }
+
+        select.innerHTML = connectors.map(c => \`<option value="\${c}">\${c}</option>\`).join('');
+
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
       }
@@ -103,42 +85,50 @@ const html = `
       processDiv.textContent = '';
 
       if (!currentData) return;
+      if (!currentData.ScheduledProcesses) return;
+
       const val = select.value.trim();
       if (!val) return;
 
-      const [selectedConnectionName, ...rest] = val.split(' ');
-      const selectedConnectorType = rest.join(' ');
+      // Split into connectionName and connectorType by last space (to be safe)
+      // Because connectorType can have spaces too
+      const lastSpaceIndex = val.lastIndexOf(' ');
+      if (lastSpaceIndex === -1) {
+        processDiv.textContent = 'Invalid selection.';
+        return;
+      }
 
-      if (!currentData.ScheduledProcesses || !Array.isArray(currentData.ScheduledProcesses)) return;
+      const connectionName = val.substring(0, lastSpaceIndex);
+      const connectorType = val.substring(lastSpaceIndex + 1);
 
-      const matchingProcessNames = [];
+      // Find all ProcessNames with matching connector
+      const matchingProcesses = [];
 
       currentData.ScheduledProcesses.forEach(proc => {
-        if (proc.Connectors && Array.isArray(proc.Connectors)) {
-          const found = proc.Connectors.some(conn => {
-            return (
-              conn.connectionName &&
-              conn.connectorType &&
-              conn.connectionName.trim().toLowerCase() === selectedConnectionName.toLowerCase() &&
-              conn.connectorType.trim().toLowerCase() === selectedConnectorType.toLowerCase()
-            );
-          });
-          if (found) {
-            let processName = "Unnamed Process";
-            if (proc.ProcessName && typeof proc.ProcessName === 'string' && proc.ProcessName.trim().length > 0) {
-              processName = proc.ProcessName.trim();
-            }
-            matchingProcessNames.push(processName);
-          }
+        if (!proc.Connectors || !Array.isArray(proc.Connectors)) return;
+
+        const match = proc.Connectors.some(conn => {
+          return (
+            conn.connectionName && conn.connectorType &&
+            conn.connectionName.trim() === connectionName &&
+            conn.connectorType.trim() === connectorType
+          );
+        });
+
+        if (match) {
+          matchingProcesses.push(proc.ProcessName || '(no ProcessName)');
         }
       });
 
-      if (matchingProcessNames.length > 0) {
-        const uniqueProcessNames = Array.from(new Set(matchingProcessNames));
-        processDiv.innerHTML = '<ul>' + uniqueProcessNames.map(name => '<li>' + name + '</li>').join('') + '</ul>';
-      } else {
+      if (matchingProcesses.length === 0) {
         processDiv.textContent = 'No ProcessName found for selected connector.';
+        return;
       }
+
+      // Show unique ProcessNames
+      const uniqueProcesses = [...new Set(matchingProcesses)];
+
+      processDiv.innerHTML = '<ul>' + uniqueProcesses.map(p => '<li>' + p + '</li>').join('') + '</ul>';
     }
   </script>
 </body>
