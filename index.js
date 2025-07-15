@@ -39,35 +39,48 @@ const html = `
           return;
         }
 
-        function extractConnectionNames(obj) {
-          const names = [];
+        function extractConnectionEntries(obj) {
+          const entries = [];
 
-          if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) return names;
+          if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) return entries;
 
           obj.ScheduledProcesses.forEach(proc => {
             if (proc.Connectors && Array.isArray(proc.Connectors)) {
               proc.Connectors.forEach(conn => {
-                if (conn.connectionName && typeof conn.connectionName === 'string') {
-                  names.push(conn.connectionName.trim());
+                if (
+                  conn.connectionName && typeof conn.connectionName === 'string' &&
+                  conn.connectorType && typeof conn.connectorType === 'string'
+                ) {
+                  const connectionName = conn.connectionName.trim();
+                  const connectorType = conn.connectorType.trim();
+                  entries.push({ connectionName, connectorType });
                 }
               });
             }
           });
 
-          return names;
+          return entries;
         }
 
-        // Normalize for uniqueness (case-insensitive), keep original casing for display
-        const rawNames = extractConnectionNames(objects[0]);
-        const uniqueMap = new Map();
-        rawNames.forEach(name => {
-          const key = name.toLowerCase();
-          if (!uniqueMap.has(key)) uniqueMap.set(key, name);
-        });
-        const uniqueSortedNames = Array.from(uniqueMap.values()).sort((a, b) => a.localeCompare(b));
+        // Get entries (connectionName + connectorType)
+        const rawEntries = extractConnectionEntries(objects[0]);
 
-        if (uniqueSortedNames.length > 0) {
-          select.innerHTML = uniqueSortedNames.map(name => \`<option value="\${name}">\${name}</option>\`).join('');
+        // Create unique keys (case insensitive) for uniqueness
+        const uniqueMap = new Map();
+        rawEntries.forEach(({ connectionName, connectorType }) => {
+          const key = (connectionName + ' ' + connectorType).toLowerCase();
+          if (!uniqueMap.has(key)) uniqueMap.set(key, { connectionName, connectorType });
+        });
+
+        // Sort alphabetically by combined string (case insensitive)
+        const uniqueSortedEntries = Array.from(uniqueMap.values())
+          .sort((a, b) => (a.connectionName + ' ' + a.connectorType).localeCompare(b.connectionName + ' ' + b.connectorType));
+
+        if (uniqueSortedEntries.length > 0) {
+          select.innerHTML = uniqueSortedEntries
+            .map(({ connectionName, connectorType }) =>
+              \`<option value="\${connectionName} \${connectorType}">\${connectionName} \${connectorType}</option>\`
+            ).join('');
         }
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
