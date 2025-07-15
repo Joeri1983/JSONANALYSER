@@ -10,12 +10,21 @@ const html = `
   <h1>JSON Key Explorer</h1>
   <textarea id="jsonInput" rows="14" cols="70" placeholder='Enter JSON object or array of objects'></textarea><br>
   <button onclick="compute()">Compute</button>
+
+  <h3>Connection Names:</h3>
+  <select id="connectionSelect">
+    <option value="">-- No connections found --</option>
+  </select>
+
   <pre id="output"></pre>
 
   <script>
     function compute() {
       const input = document.getElementById('jsonInput').value;
       const output = document.getElementById('output');
+      const select = document.getElementById('connectionSelect');
+      select.innerHTML = '<option value="">-- No connections found --</option>'; // Reset
+
       try {
         const data = JSON.parse(input);
         let objects = [];
@@ -50,10 +59,35 @@ const html = `
           return keys;
         }
 
+        // Helper: Extract all connectionName values from ScheduledProcesses[*].Connectors[*]
+        function extractConnectionNames(obj) {
+          const names = [];
+
+          if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) return names;
+
+          obj.ScheduledProcesses.forEach((proc, i) => {
+            if (proc.Connectors && Array.isArray(proc.Connectors)) {
+              proc.Connectors.forEach((conn, j) => {
+                if (conn.connectionName) {
+                  names.push(conn.connectionName);
+                }
+              });
+            }
+          });
+
+          return names;
+        }
+
         const result = objects.map((obj, index) => {
           const keys = getAllKeys(obj);
           return \`Object \${index + 1} keys:\\n- \${keys.join('\\n- ')}\`;
         }).join('\\n\\n');
+
+        // Extract connection names
+        const connectionNames = extractConnectionNames(objects[0]);
+        if (connectionNames.length > 0) {
+          select.innerHTML = connectionNames.map(name => \`<option value="\${name}">\${name}</option>\`).join('');
+        }
 
         output.textContent = result;
       } catch (e) {
