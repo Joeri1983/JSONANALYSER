@@ -20,7 +20,7 @@ const html = `
   <div id="connectionSection">
     <h3>Connection Names:</h3>
     <select id="connectionSelect" onchange="showProcesses()">
-      <option value="">-- No connections found --</option>
+      <option value="">&lt;select a connection&gt;</option>
     </select>
   </div>
 
@@ -45,7 +45,6 @@ const html = `
 
       output.textContent = '';
       processDiv.textContent = '';
-      select.innerHTML = '<option value="">-- No connections found --</option>';
       currentData = null;
       connectionNames = [];
 
@@ -91,9 +90,11 @@ const html = `
           return;
         }
 
-        select.innerHTML = connectionNames
-          .map(name => \`<option value="\${name}">\${name}</option>\`)
-          .join('');
+        // Add numbered options with empty top option
+        select.innerHTML = '<option value="">&lt;select a connection&gt;</option>' + 
+          connectionNames
+            .map((name, index) => \`<option value="\${name}">\${index + 1}. \${name}</option>\`)
+            .join('');
 
         // Show the connection dropdown section now that data is loaded
         connectionSection.style.display = 'block';
