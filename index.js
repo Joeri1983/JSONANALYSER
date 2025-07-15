@@ -14,7 +14,7 @@ const html = `
 </head>
 <body>
   <h1>Insert JSON data</h1>
-  <textarea id="jsonInput" rows="20" cols="200" placeholder='Enter JSON object or array of objects'></textarea><br>
+  <textarea id="jsonInput" rows="40" cols="100" placeholder='Enter JSON object or array of objects'></textarea><br>
   <button onclick="compute()">Show connectors</button>
 
   <div id="connectionSection">
