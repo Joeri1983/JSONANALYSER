@@ -8,7 +8,7 @@ const html = `
 </head>
 <body>
   <h1>JSON Key Explorer</h1>
-  <textarea id="jsonInput" rows="12" cols="60" placeholder='Enter JSON object or array of objects here'></textarea><br>
+  <textarea id="jsonInput" rows="14" cols="70" placeholder='Enter JSON object or array of objects'></textarea><br>
   <button onclick="compute()">Compute</button>
   <pre id="output"></pre>
 
@@ -31,22 +31,26 @@ const html = `
 
         function getAllKeys(obj, prefix = '') {
           let keys = [];
-          for (const key in obj) {
-            if (!obj.hasOwnProperty(key)) continue;
-            const path = prefix ? \`\${prefix}.\${key}\` : key;
-            if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-              keys = keys.concat(getAllKeys(obj[key], path));
-            } else {
-              keys.push(path);
+
+          if (Array.isArray(obj)) {
+            obj.forEach((item, index) => {
+              const arrayPrefix = \`\${prefix}[\${index}]\`;
+              keys = keys.concat(getAllKeys(item, arrayPrefix));
+            });
+          } else if (typeof obj === 'object' && obj !== null) {
+            for (const key in obj) {
+              if (!obj.hasOwnProperty(key)) continue;
+              const newPrefix = prefix ? \`\${prefix}.\${key}\` : key;
+              keys = keys.concat(getAllKeys(obj[key], newPrefix));
             }
+          } else {
+            keys.push(prefix);
           }
+
           return keys;
         }
 
         const result = objects.map((obj, index) => {
-          if (typeof obj !== 'object' || obj === null) {
-            return \`Item \${index} is not a valid object.\`;
-          }
           const keys = getAllKeys(obj);
           return \`Object \${index + 1} keys:\\n- \${keys.join('\\n- ')}\`;
         }).join('\\n\\n');
