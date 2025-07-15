@@ -4,11 +4,11 @@ const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>JSON Overview</title>
+  <title>JSON Key Explorer</title>
 </head>
 <body>
-  <h1>JSON Object Viewer</h1>
-  <textarea id="jsonInput" rows="10" cols="50" placeholder='Enter JSON here'></textarea><br>
+  <h1>JSON Key Explorer</h1>
+  <textarea id="jsonInput" rows="12" cols="60" placeholder='Enter JSON object or array of objects here'></textarea><br>
   <button onclick="compute()">Compute</button>
   <pre id="output"></pre>
 
@@ -23,18 +23,33 @@ const html = `
         if (Array.isArray(data)) {
           objects = data;
         } else if (typeof data === 'object' && data !== null) {
-          objects = [data]; // Wrap single object in array
+          objects = [data];
         } else {
           output.textContent = 'Please enter a valid JSON object or array of objects.';
           return;
+        }
+
+        function getAllKeys(obj, prefix = '') {
+          let keys = [];
+          for (const key in obj) {
+            if (!obj.hasOwnProperty(key)) continue;
+            const path = prefix ? \`\${prefix}.\${key}\` : key;
+            if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+              keys = keys.concat(getAllKeys(obj[key], path));
+            } else {
+              keys.push(path);
+            }
+          }
+          return keys;
         }
 
         const result = objects.map((obj, index) => {
           if (typeof obj !== 'object' || obj === null) {
             return \`Item \${index} is not a valid object.\`;
           }
-          return \`Object \${index + 1} keys: \${Object.keys(obj).join(', ')}\`;
-        }).join('\\n');
+          const keys = getAllKeys(obj);
+          return \`Object \${index + 1} keys:\\n- \${keys.join('\\n- ')}\`;
+        }).join('\\n\\n');
 
         output.textContent = result;
       } catch (e) {
