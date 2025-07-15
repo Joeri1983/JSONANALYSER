@@ -1,1 +1,3 @@
-Hallo world
+// index.js
+
+console.log("Hello, world!");
