@@ -1,5 +1,4 @@
 const http = require('http');
-const fs = require('fs');
 
 const html = `
 <!DOCTYPE html>
@@ -9,7 +8,7 @@ const html = `
 </head>
 <body>
   <h1>JSON Object Viewer</h1>
-  <textarea id="jsonInput" rows="10" cols="50" placeholder='Enter JSON array of objects here'></textarea><br>
+  <textarea id="jsonInput" rows="10" cols="50" placeholder='Enter JSON here'></textarea><br>
   <button onclick="compute()">Compute</button>
   <pre id="output"></pre>
 
@@ -19,13 +18,18 @@ const html = `
       const output = document.getElementById('output');
       try {
         const data = JSON.parse(input);
+        let objects = [];
 
-        if (!Array.isArray(data)) {
-          output.textContent = 'Please enter a JSON array of objects.';
+        if (Array.isArray(data)) {
+          objects = data;
+        } else if (typeof data === 'object' && data !== null) {
+          objects = [data]; // Wrap single object in array
+        } else {
+          output.textContent = 'Please enter a valid JSON object or array of objects.';
           return;
         }
 
-        const result = data.map((obj, index) => {
+        const result = objects.map((obj, index) => {
           if (typeof obj !== 'object' || obj === null) {
             return \`Item \${index} is not a valid object.\`;
           }
