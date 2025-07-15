@@ -59,17 +59,16 @@ const html = `
           return keys;
         }
 
-        // Helper: Extract all connectionName values from ScheduledProcesses[*].Connectors[*]
         function extractConnectionNames(obj) {
           const names = [];
 
           if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) return names;
 
-          obj.ScheduledProcesses.forEach((proc, i) => {
+          obj.ScheduledProcesses.forEach(proc => {
             if (proc.Connectors && Array.isArray(proc.Connectors)) {
-              proc.Connectors.forEach((conn, j) => {
-                if (conn.connectionName) {
-                  names.push(conn.connectionName);
+              proc.Connectors.forEach(conn => {
+                if (conn.connectionName && typeof conn.connectionName === 'string') {
+                  names.push(conn.connectionName.trim());
                 }
               });
             }
@@ -83,10 +82,17 @@ const html = `
           return \`Object \${index + 1} keys:\\n- \${keys.join('\\n- ')}\`;
         }).join('\\n\\n');
 
-        // Extract connection names
-        const connectionNames = extractConnectionNames(objects[0]);
-        if (connectionNames.length > 0) {
-          select.innerHTML = connectionNames.map(name => \`<option value="\${name}">\${name}</option>\`).join('');
+        // Normalize for uniqueness (case-insensitive), keep original casing for display
+        const rawNames = extractConnectionNames(objects[0]);
+        const uniqueMap = new Map();
+        rawNames.forEach(name => {
+          const key = name.toLowerCase();
+          if (!uniqueMap.has(key)) uniqueMap.set(key, name);
+        });
+        const uniqueSortedNames = Array.from(uniqueMap.values()).sort((a, b) => a.localeCompare(b));
+
+        if (uniqueSortedNames.length > 0) {
+          select.innerHTML = uniqueSortedNames.map(name => \`<option value="\${name}">\${name}</option>\`).join('');
         }
 
         output.textContent = result;
