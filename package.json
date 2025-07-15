@@ -1,0 +1,21 @@
+
+{
+  "name": "DEGIRO",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joeri1983/DEGIRO.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joeri1983/DEGIRO/issues"
+  },
+  "homepage": "https://github.com/joeri1983/DEGIRO#readme"
+}
