@@ -6,15 +6,39 @@ const html = `
 <head>
   <title>Boomi - Connection/Process relations</title>
   <style>
-    /* Hide the sections initially */
     #connectionSection, #processSection {
       display: none;
+    }
+    .input-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .input-grid input {
+      padding: 4px;
+      width: 250px;
     }
   </style>
 </head>
 <body>
   <h1>Insert JSON data</h1>
-  <textarea id="jsonInput" rows="30" cols="100" placeholder='Enter JSON object or array of objects'></textarea><br>
+
+  <div style="display: flex; align-items: flex-start; gap: 20px;">
+    <textarea id="jsonInput" rows="30" cols="100" placeholder='Enter JSON object or array of objects'></textarea>
+
+    <div>
+      <div class="input-grid">
+        <input type="text" id="accountID" placeholder="Account ID" />
+        <input type="text" id="envID" placeholder="Environment ID" />
+        <input type="text" id="atomID" placeholder="Atom ID" />
+        <input type="password" id="authToken" placeholder="Auth Password" />
+        <button onclick="retrieveData()">Retrieve Data</button>
+      </div>
+    </div>
+  </div>
+
+  <br>
   <button onclick="compute()">Show connectors</button>
 
   <div id="connectionSection">
@@ -32,8 +56,58 @@ const html = `
   <pre id="output"></pre>
 
   <script>
-    let currentData = null; // Store parsed JSON
+    let currentData = null;
     let connectionNames = [];
+
+    async function retrieveData() {
+      const accountID = document.getElementById('accountID').value.trim();
+      const envID = document.getElementById('envID').value.trim();
+      const atomID = document.getElementById('atomID').value.trim();
+      const password = document.getElementById('authToken').value.trim();
+      const output = document.getElementById('output');
+      const jsonInput = document.getElementById('jsonInput');
+
+      output.textContent = '';
+
+      if (!accountID || !envID || !atomID || !password) {
+        output.textContent = 'All input fields must be filled.';
+        return;
+      }
+
+      const username = 'dataconbv-LXAOAC.TJMXZJ';
+      const basicAuth = btoa(username + ':' + password);
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 75000); // 75 seconds
+
+        const response = await fetch('https://c01-deu.integrate.boomi.com/ws/rest/processes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + basicAuth
+          },
+          body: JSON.stringify({
+            accountID,
+            envID,
+            atomID
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+
+        const json = await response.json();
+        jsonInput.value = JSON.stringify(json, null, 2);
+        output.textContent = 'Data retrieved successfully. Click "Show connectors" to continue.';
+      } catch (error) {
+        output.textContent = 'Error retrieving data: ' + (error.name === 'AbortError' ? 'Request timed out' : error.message);
+      }
+    }
 
     function compute() {
       const input = document.getElementById('jsonInput').value;
@@ -48,22 +122,18 @@ const html = `
       currentData = null;
       connectionNames = [];
 
-      // Hide sections initially until valid data is found
       connectionSection.style.display = 'none';
       processSection.style.display = 'none';
 
       try {
         const data = JSON.parse(input);
-        let obj = null;
+        let obj = Array.isArray(data) ? data[0] : data;
 
-        if (Array.isArray(data)) {
-          obj = data[0];
-        } else if (typeof data === 'object' && data !== null) {
-          obj = data;
-        } else {
+        if (!obj || typeof obj !== 'object') {
           output.textContent = 'Please enter a valid JSON object or array of objects.';
           return;
         }
+
         currentData = obj;
 
         if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) {
@@ -71,7 +141,6 @@ const html = `
           return;
         }
 
-        // Collect unique connectionNames
         const namesSet = new Set();
         obj.ScheduledProcesses.forEach(proc => {
           if (proc.Connectors && Array.isArray(proc.Connectors)) {
@@ -83,22 +152,18 @@ const html = `
           }
         });
 
-        connectionNames = Array.from(namesSet).sort((a,b) => a.localeCompare(b));
+        connectionNames = Array.from(namesSet).sort((a, b) => a.localeCompare(b));
 
-        if(connectionNames.length === 0) {
+        if (connectionNames.length === 0) {
           output.textContent = 'No connection names found.';
           return;
         }
 
-        // Add numbered options with empty top option
-        select.innerHTML = '<option value="">&lt;select a connection&gt;</option>' + 
-          connectionNames
-            .map((name, index) => \`<option value="\${name}">\${index + 1}. \${name}</option>\`)
-            .join('');
+        select.innerHTML = '<option value="">&lt;select a connection&gt;</option>' +
+          connectionNames.map((name, index) => \`<option value="\${name}">\${index + 1}. \${name}</option>\`).join('');
 
-        // Show the connection dropdown section now that data is loaded
         connectionSection.style.display = 'block';
-        processSection.style.display = 'none'; // keep process section hidden until selection
+        processSection.style.display = 'none';
       } catch (e) {
         output.textContent = 'Invalid JSON: ' + e.message;
       }
@@ -126,10 +191,7 @@ const html = `
         if (!proc.Connectors || !Array.isArray(proc.Connectors)) return;
 
         const match = proc.Connectors.some(conn => {
-          return (
-            conn.connectionName &&
-            conn.connectionName.trim() === selectedName
-          );
+          return conn.connectionName && conn.connectionName.trim() === selectedName;
         });
 
         if (match) {
@@ -144,7 +206,6 @@ const html = `
       }
 
       const uniqueProcesses = [...new Set(matchingProcesses)];
-      // Use <ol> for numbered list instead of <ul>
       processDiv.innerHTML = '<ol>' + uniqueProcesses.map(p => '<li>' + p + '</li>').join('') + '</ol>';
       processSection.style.display = 'block';
     }
