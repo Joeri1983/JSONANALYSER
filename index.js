@@ -1,4 +1,8 @@
 const http = require('http');
+const fetch = require('node-fetch');
+const { URL } = require('url');
+
+const PORT = 3000;
 
 const html = `
 <!DOCTYPE html>
@@ -74,38 +78,24 @@ const html = `
         return;
       }
 
-      const username = 'dataconbv-LXAOAC.TJMXZJ';
-      const basicAuth = btoa(username + ':' + password);
-
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 75000); // 75 seconds
-
-        const response = await fetch('https://c01-deu.integrate.boomi.com/ws/rest/processes', {
+        const response = await fetch('/proxy', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + basicAuth
+            'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            accountID,
-            envID,
-            atomID
-          }),
-          signal: controller.signal
+          body: JSON.stringify({ accountID, envID, atomID, password })
         });
 
-        clearTimeout(timeout);
-
         if (!response.ok) {
-          throw new Error('HTTP error ' + response.status);
+          throw new Error('HTTP ' + response.status);
         }
 
-        const json = await response.json();
-        jsonInput.value = JSON.stringify(json, null, 2);
+        const data = await response.json();
+        jsonInput.value = JSON.stringify(data, null, 2);
         output.textContent = 'Data retrieved successfully. Click "Show connectors" to continue.';
-      } catch (error) {
-        output.textContent = 'Error retrieving data: ' + (error.name === 'AbortError' ? 'Request timed out' : error.message);
+      } catch (err) {
+        output.textContent = 'Error retrieving data: ' + err.message;
       }
     }
 
@@ -214,11 +204,49 @@ const html = `
 </html>
 `;
 
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end(html);
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(html);
+  } else if (req.method === 'POST' && req.url === '/proxy') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { accountID, envID, atomID, password } = JSON.parse(body);
+        const username = 'dataconbv-LXAOAC.TJMXZJ';
+        const auth = Buffer.from(username + ':' + password).toString('base64');
+
+        const boomiRes = await fetch('https://c01-deu.integrate.boomi.com/ws/rest/processes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + auth
+          },
+          body: JSON.stringify({ accountID, envID, atomID }),
+          timeout: 75000 // wait up to 75 seconds
+        });
+
+        if (!boomiRes.ok) {
+          res.writeHead(boomiRes.status, { 'Content-Type': 'text/plain' });
+          const errText = await boomiRes.text();
+          return res.end('Boomi API error: ' + errText);
+        }
+
+        const data = await boomiRes.json();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(data));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Server error: ' + err.message);
+      }
+    });
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
 });
 
-server.listen(3000, () => {
-  console.log('Server running at http://localhost:3000');
+server.listen(PORT, () => {
+  console.log('Server running at http://localhost:' + PORT);
 });
